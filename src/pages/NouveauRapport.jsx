@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -13,6 +14,22 @@ function getTodayDate() {
 
 function NouveauRapport() {
   const navigate = useNavigate()
+  const [rapport, setRapport] = useState({
+    date: getTodayDate(),
+    commune: '',
+    adresse: '',
+    bailleur: '',
+    occupant: '',
+    refSignalLogement: '',
+    refAxel: '',
+  })
+
+  const handleChange = (field) => (event) => {
+    setRapport((current) => ({
+      ...current,
+      [field]: event.target.value,
+    }))
+  }
 
   return (
     <Box
@@ -33,21 +50,56 @@ function NouveauRapport() {
           <TextField
             label="Date"
             type="date"
-            defaultValue={getTodayDate()}
+            value={rapport.date}
             InputLabelProps={{ shrink: true }}
             fullWidth
             InputProps={{ readOnly: true }}
           />
-          <TextField label="Commune" fullWidth />
-          <TextField label="Adresse" fullWidth />
-          <TextField label="Bailleur" fullWidth />
-          <TextField label="Occupant" fullWidth />
-          <TextField label="Référence Signal Logement" fullWidth />
-          <TextField label="Référence AXEL" fullWidth />
+          <TextField
+            label="Commune"
+            fullWidth
+            value={rapport.commune}
+            onChange={handleChange('commune')}
+          />
+          <TextField
+            label="Adresse"
+            fullWidth
+            value={rapport.adresse}
+            onChange={handleChange('adresse')}
+          />
+          <TextField
+            label="Bailleur"
+            fullWidth
+            value={rapport.bailleur}
+            onChange={handleChange('bailleur')}
+          />
+          <TextField
+            label="Occupant"
+            fullWidth
+            value={rapport.occupant}
+            onChange={handleChange('occupant')}
+          />
+          <TextField
+            label="Référence Signal Logement"
+            fullWidth
+            value={rapport.refSignalLogement}
+            onChange={handleChange('refSignalLogement')}
+          />
+          <TextField
+            label="Référence AXEL"
+            fullWidth
+            value={rapport.refAxel}
+            onChange={handleChange('refAxel')}
+          />
         </Stack>
 
         <Stack spacing={2} sx={{ mt: 4 }}>
-          <Button variant="contained" size="large" fullWidth>
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            onClick={() => navigate('/rapport-visite', { state: rapport })}
+          >
             Commencer le rapport
           </Button>
           <Button
