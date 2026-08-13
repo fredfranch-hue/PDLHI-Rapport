@@ -83,6 +83,7 @@ function RapportVisite() {
       categorie: formData.categorie,
       desordre: formData.desordre.trim(),
       commentaire: formData.commentaire.trim(),
+      photos: [],
     }
 
     setDesordres((current) => [...current, nouveauDesordre])
@@ -91,6 +92,38 @@ function RapportVisite() {
 
   const handleDeleteDesordre = (id) => {
     setDesordres((current) => current.filter((desordre) => desordre.id !== id))
+  }
+
+  const handleOpenFileDialog = (desordreId) => {
+    const input = document.getElementById(`file-input-${desordreId}`)
+    if (input) input.click()
+  }
+
+  const handleFileChange = (desordreId) => (event) => {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+
+    setDesordres((current) =>
+      current.map((d) => {
+        if (d.id !== desordreId) return d
+        const remaining = 3 - (d.photos ? d.photos.length : 0)
+        const toAdd = files.slice(0, remaining)
+        return { ...d, photos: [...(d.photos || []), ...toAdd] }
+      })
+    )
+
+    // reset input so selecting same file again works
+    event.target.value = ''
+  }
+
+  const handleDeletePhoto = (desordreId, index) => {
+    setDesordres((current) =>
+      current.map((d) => {
+        if (d.id !== desordreId) return d
+        const photos = (d.photos || []).filter((_, i) => i !== index)
+        return { ...d, photos }
+      })
+    )
   }
 
   return (
@@ -233,14 +266,71 @@ function RapportVisite() {
                         </Typography>
                       </Stack>
                     </Box>
-                    <IconButton
-                      color="error"
-                      aria-label="Supprimer le désordre"
-                      onClick={() => handleDeleteDesordre(desordre.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
+                      <IconButton
+                        color="error"
+                        aria-label="Supprimer le désordre"
+                        onClick={() => handleDeleteDesordre(desordre.id)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        📷 {desordre.photos ? desordre.photos.length : 0} {((desordre.photos ? desordre.photos.length : 0) <= 1) ? 'photo' : 'photos'}
+                      </Typography>
+
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                        {(desordre.photos || []).map((file, idx) => (
+                          <Box key={idx} sx={{ position: 'relative', width: 96, height: 72, borderRadius: 1, overflow: 'hidden', boxShadow: 1 }}>
+                            <Box
+                              component="img"
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            />
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeletePhoto(desordre.id, idx)}
+                              aria-label="Supprimer la photo"
+                              sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(255,255,255,0.8)' }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        ))}
+
+                        {(desordre.photos || []).length < 3 ? (
+                          <>
+                            <input
+                              id={`file-input-${desordre.id}`}
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={handleFileChange(desordre.id)}
+                              multiple
+                            />
+                            <Button
+                              variant="outlined"
+                              onClick={() => handleOpenFileDialog(desordre.id)}
+                              sx={{ minWidth: 160, height: 40 }}
+                            >
+                              Ajouter une photo
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="outlined"
+                            disabled
+                            aria-disabled
+                            sx={{ minWidth: 200, height: 40, bgcolor: 'grey.100' }}
+                          >
+                            📷 3 photos — limite atteinte
+                          </Button>
+                        )}
+                      </Stack>
+                    </Box>
                 </CardContent>
               </Card>
             ))}
