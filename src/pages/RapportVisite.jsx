@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import { generatePdf } from '../services/pdfGenerator'
 import {
   Box,
   Button,
@@ -440,13 +441,14 @@ function RapportVisite() {
         </DialogActions>
       </Dialog>
 
-      <Box sx={{ p: { xs: 2, sm: 3 }, pt: 0 }}>
+        <Box sx={{ p: { xs: 2, sm: 3 }, pt: 0 }}>
         <Button
           variant="contained"
           size="large"
           startIcon={<PictureAsPdfIcon />}
           fullWidth
-          disabled
+          disabled={desordres.length === 0}
+          onClick={() => generatePdf(report, desordres)}
         >
           Générer le PDF
         </Button>
