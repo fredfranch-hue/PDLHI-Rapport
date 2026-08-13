@@ -1,24 +1,30 @@
-export const referentielDesordres = {
-
+export const referentielPDLHI = {
   "Humidité": [
-    "Condensation",
     "Infiltration toiture",
-    "Remontées capillaires",
     "Infiltration façade",
-    "Moisissures"
+    "Condensation",
+    "Moisissures",
+    "Humidité ascensionnelle",
+    "Remontées capillaires"
   ],
 
   "Ventilation": [
-    "Absence de ventilation",
     "VMC absente",
     "VMC hors service",
-    "Entrées d'air absentes"
+    "Entrées d'air absentes",
+    "Entrées d'air bouchées",
+    "Ventilation insuffisante",
+    "Grilles de ventilation obturées",
+    "Absence de ventilation"
   ],
 
   "Électricité": [
     "Conducteurs dénudés",
+    "Tableau électrique dégradé",
+    "Absence de protection différentielle",
+    "Prises détériorées",
+    "Installation vétuste",
     "Tableau électrique vétuste",
-    "Prises défectueuses",
     "Installation dangereuse"
   ],
 
@@ -52,8 +58,7 @@ export const referentielDesordres = {
     "Pont thermique"
   ],
 
-  "Autre": [
+  "Divers": [
     "Autre désordre"
   ]
-
-};
+}

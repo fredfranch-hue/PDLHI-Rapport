@@ -22,7 +22,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { referentielDesordres } from '../data/referentielDesordres'
+import { referentielPDLHI } from '../data/referentielPDLHI'
 import AppBarOfficielle from '../components/AppBarOfficielle'
 import logoRepublique from '../assets/logos/logo-republique.png'
 import logoPrefet from '../assets/logos/logo-prefet.png'
@@ -33,9 +33,11 @@ function RapportVisite() {
   const report = state ?? {}
   const [desordres, setDesordres] = useState([])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const categorieOptions = Object.keys(referentielPDLHI)
+
   const [formData, setFormData] = useState({
     piece: 'Entrée',
-    categorie: 'Humidité',
+    categorie: categorieOptions[0] || '',
     desordre: '',
     commentaire: '',
   })
@@ -397,17 +399,9 @@ function RapportVisite() {
                 value={formData.categorie}
                 onChange={handleFieldChange('categorie')}
               >
-                <MenuItem value="Humidité">Humidité</MenuItem>
-                <MenuItem value="Ventilation">Ventilation</MenuItem>
-                <MenuItem value="Électricité">Électricité</MenuItem>
-                <MenuItem value="Chauffage">Chauffage</MenuItem>
-                <MenuItem value="Menuiseries">Menuiseries</MenuItem>
-                <MenuItem value="Plomberie">Plomberie</MenuItem>
-                <MenuItem value="Structure">Structure</MenuItem>
-                <MenuItem value="Performance énergétique">
-                  Performance énergétique
-                </MenuItem>
-                <MenuItem value="Divers">Divers</MenuItem>
+                {categorieOptions.map((cat) => (
+                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                ))}
               </Select>
             </FormControl>
 
@@ -419,21 +413,12 @@ function RapportVisite() {
                 value={formData.desordre}
                 onChange={handleFieldChange('desordre')}
               >
-                {(() => {
-                  const key = formData.categorie === 'Divers' ? 'Autre' : formData.categorie
-                  const options = referentielDesordres[key] || []
-                  return options.length
-                    ? options.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
-                      ))
-                    : (
-                      <MenuItem value="">
-                        <em>Aucun</em>
-                      </MenuItem>
-                    )
-                })()}
+                <MenuItem value="" disabled>
+                  <em>Sélectionner un désordre</em>
+                </MenuItem>
+                {(referentielPDLHI[formData.categorie] || []).map((opt) => (
+                  <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                ))}
               </Select>
             </FormControl>
 
