@@ -1,4 +1,6 @@
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import logoPrefet from '../assets/logos/logo-prefet.png'
+import logoSignalLogement from '../assets/logos/logo-signal-logement.png'
 
 export async function generatePdf(report = {}, desordres = []) {
   const pdfDoc = await PDFDocument.create()
@@ -28,29 +30,100 @@ export async function generatePdf(report = {}, desordres = []) {
     y -= (options.leading || size + 6)
   }
 
+  // Page de garde : logos empilés à gauche (Préfecture dessus, Signal Logement dessous)
+  try {
+    const logoUrls = [logoPrefet, logoSignalLogement]
+    const embeddedLogos = []
+    for (const url of logoUrls) {
+      try {
+        const res = await fetch(url)
+        const ab = await res.arrayBuffer()
+        const embedded = await pdfDoc.embedPng(new Uint8Array(ab))
+        embeddedLogos.push(embedded)
+      } catch (e) {
+        // ignore missing logos
+      }
+    }
+
+    if (embeddedLogos.length > 0) {
+      const maxLogoWidth = 120
+      const gapBetween = 8
+      let lx = margin
+      let ly = y
+      for (let i = 0; i < embeddedLogos.length; i++) {
+        const l = embeddedLogos[i]
+        const scale = Math.min(1, maxLogoWidth / l.width)
+        const w = l.width * scale
+        const h = l.height * scale
+        page.drawImage(l, { x: lx, y: ly - h, width: w, height: h })
+        ly = ly - h - gapBetween
+      }
+      y = ly - 30
+    }
+  } catch (e) {
+    // ignore
+  }
+
   // Title
-  drawText('RAPPORT DE VISITE', { size: 18, bold: true, align: 'center', leading: 24 })
-  y -= 6
+  // Title block (centered). Keep larger spacing from logos.
+  drawText('RAPPORT DE VISITE', { size: 20, bold: true, align: 'center', leading: 32 })
+  y -= 8
+  drawText('Direction départementale des territoires', { size: 11, align: 'center' })
+  y -= 12
+  drawText('Pôle Départemental de Lutte contre l\'Habitat Indigne (PDLHI)', { size: 13, bold: true, align: 'center' })
+  y -= 20
+
+  // format date in French: 'Jeudi 13 août 2026'
+  const formatDateFr = (iso) => {
+    try {
+      const d = iso ? new Date(iso) : new Date()
+      const formatted = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d)
+      return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+    } catch (e) {
+      return iso || '—'
+    }
+  }
 
   const infoLines = [
-    ['Date', report.date || '—'],
+    ['Date', formatDateFr(report.date)],
     ['Commune', report.commune || '—'],
     ['Adresse', report.adresse || '—'],
     ['Bailleur', report.bailleur || '—'],
     ['Occupant', report.occupant || '—'],
+    ['Opérateur de visite', report.operator || 'Non renseigné'],
     ['Référence Signal Logement', report.refSignalLogement || '—'],
     ['Référence AXEL', report.refAxel || '—'],
   ]
 
-  for (const [label, value] of infoLines) {
+  // Draw information in a two-column table with light borders
+  const rowHeight = 22
+  const tableTop = y
+  const rowsCount = infoLines.length
+  const tableHeight = rowsCount * rowHeight
+  // table background white with border
+  page.drawRectangle({ x: margin - 4, y: tableTop - tableHeight, width: contentWidth + 8, height: tableHeight + 4, color: rgb(1, 1, 1) })
+  page.drawRectangle({ x: margin - 4, y: tableTop - tableHeight, width: contentWidth + 8, height: tableHeight + 4, borderColor: rgb(0.83, 0.83, 0.83), borderWidth: 0.5 })
+  // vertical divider
+  const dividerX = margin + contentWidth / 2
+  page.drawLine({ start: { x: dividerX, y: tableTop }, end: { x: dividerX, y: tableTop - tableHeight }, thickness: 0.5, color: rgb(0.83, 0.83, 0.83) })
+
+  for (let i = 0; i < infoLines.length; i++) {
+    const [label, value] = infoLines[i]
+    const rowY = tableTop - (i + 0.5) * rowHeight + 6
     if (y < margin + 40) {
       page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT])
       ;({ width, height } = page.getSize())
       y = height - margin
     }
-    drawText(label + ':', { bold: true })
-    drawText(value, { leading: 16 })
+    // draw label and value in table row
+    const leftX = margin + 6
+    const rightX = dividerX + 6
+    const labelSize = 11
+    const valueSize = 11
+    page.drawText(label + ':', { x: leftX, y: rowY, size: labelSize, font: helveticaBold })
+    page.drawText(String(value), { x: rightX, y: rowY, size: valueSize, font: helvetica })
   }
+  y = tableTop - tableHeight - 12
 
   y -= 6
   if (y < margin + 80) {
@@ -98,6 +171,9 @@ export async function generatePdf(report = {}, desordres = []) {
       }
     }
 
+    // Note: EXIF orientation is not handled here. Future improvement: read EXIF orientation
+    // and rotate images accordingly before embedding.
+
     // compute rows for images to estimate required height
     const rows = []
     let currentRow = []
@@ -133,8 +209,23 @@ export async function generatePdf(report = {}, desordres = []) {
       y = height - margin
     }
 
-    // draw constat header and fields
-    drawText(`CONSTAT N°${constatIndex}`, { bold: true, size: 14 })
+    // draw a light box for the constat with header band
+    const boxPadding = 10
+    const boxHeight = requiredHeight
+    const boxTop = y
+    const boxY = boxTop - boxHeight
+    // outer border
+    page.drawRectangle({ x: margin - 6, y: boxY, width: contentWidth + 12, height: boxHeight, borderColor: rgb(0.83, 0.83, 0.83), borderWidth: 0.5 })
+    // header band
+    const bandHeight = 26
+    page.drawRectangle({ x: margin - 6, y: boxTop - bandHeight, width: contentWidth + 12, height: bandHeight, color: rgb(0.95, 0.95, 0.95) })
+
+    // draw constat header and fields inside box
+    // place content below the header band with padding to avoid overlap
+    y = boxTop - bandHeight - boxPadding
+    // header text inside band, left aligned with padding
+    page.drawText(`CONSTAT N°${constatIndex}`, { x: margin, y: boxTop - bandHeight + 6, size: 14, font: helveticaBold })
+
     drawText('Pièce :', { bold: true })
     drawText(d.piece || '—')
 
@@ -175,11 +266,16 @@ export async function generatePdf(report = {}, desordres = []) {
           const it = row[ci]
           page.drawImage(it.embedded, { x, y: y - it.displayH, width: it.displayW, height: it.displayH })
 
-          // captions under image
-          const captionY = y - it.displayH - captionLeading
-          drawText(`Photo ${ci + 1}`, { x, size: captionSize })
-          drawText(d.piece || '—', { x, size: captionSize })
-          drawText(d.desordre || '—', { x, size: captionSize, leading: captionLeading })
+          // centered captions under image (3 lines)
+          const captionTop = y - it.displayH - 6
+          const lines = [`Photo ${ci + 1}`, d.piece || '—', d.desordre || '—']
+          for (let li = 0; li < lines.length; li++) {
+            const line = lines[li]
+            const textWidth = helvetica.widthOfTextAtSize(line, captionSize)
+            const captionX = x + (it.displayW - textWidth) / 2
+            const captionY = captionTop - li * (captionSize + 2)
+            page.drawText(line, { x: captionX, y: captionY, size: captionSize, font: helvetica })
+          }
 
           x += it.displayW + imgGap
         }
@@ -194,6 +290,81 @@ export async function generatePdf(report = {}, desordres = []) {
     // small spacer between constats
     y -= 12
     constatIndex += 1
+  }
+
+  // MENTIONS block at the end of the document (in a light gray box, smaller font, justified)
+  const mentionsText = `Le présent rapport constitue un document de travail interne du Pôle Départemental de Lutte contre l'Habitat Indigne (PDLHI).\n\nIl a pour objet de faciliter le suivi technique des situations signalées.\n\nIl ne constitue ni un rapport d'expertise, ni un constat contradictoire, ni un document opposable aux parties.\n\nLes éventuelles décisions administratives sont prises dans le cadre des procédures prévues par les textes en vigueur et des constats réalisés par les autorités compétentes.`
+  // ensure space
+  if (y < margin + 140) {
+    page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT])
+    ;({ width, height } = page.getSize())
+    y = height - margin
+  }
+  const mentionsBoxHeightEstimate = 120
+  page.drawRectangle({ x: margin - 6, y: y - mentionsBoxHeightEstimate, width: contentWidth + 12, height: mentionsBoxHeightEstimate, color: rgb(0.95, 0.95, 0.95) })
+  // draw title
+  page.drawText('MENTIONS', { x: margin, y: y - 18, size: 11, font: helveticaBold })
+  let my = y - 36
+
+  // draw justified wrapped text inside box
+  const drawJustified = (text, size = 10) => {
+    const font = helvetica
+    const maxWidth = contentWidth - 8
+    const paragraphs = text.split(/\n\n+/)
+    for (const para of paragraphs) {
+      const words = para.split(/\s+/)
+      let lineWords = []
+      let lineWidth = 0
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i]
+        const wWidth = font.widthOfTextAtSize(w, size)
+        if (lineWords.length === 0) {
+          lineWords.push(w)
+          lineWidth = wWidth
+        } else if (lineWidth + font.widthOfTextAtSize(' ', size) + wWidth <= maxWidth) {
+          lineWords.push(w)
+          lineWidth += font.widthOfTextAtSize(' ', size) + wWidth
+        } else {
+          // draw justified line
+          const gaps = lineWords.length - 1
+          if (gaps <= 0) {
+            page.drawText(lineWords.join(' '), { x: margin + 4, y: my, size, font })
+            my -= size + 4
+          } else {
+            const extra = (maxWidth - font.widthOfTextAtSize(lineWords.join(' '), size)) / gaps
+            let lx = margin + 4
+            for (let gi = 0; gi < lineWords.length; gi++) {
+              const word = lineWords[gi]
+              page.drawText(word, { x: lx, y: my, size, font })
+              lx += font.widthOfTextAtSize(word, size) + font.widthOfTextAtSize(' ', size) + extra
+            }
+            my -= size + 4
+          }
+          lineWords = [w]
+          lineWidth = wWidth
+        }
+      }
+      if (lineWords.length > 0) {
+        page.drawText(lineWords.join(' '), { x: margin + 4, y: my, size, font })
+        my -= size + 4
+      }
+      my -= 6
+    }
+  }
+
+  drawJustified(mentionsText, 10)
+  y = my - 12
+
+  // Footer: add page numbers centered on each page
+  const pages = pdfDoc.getPages()
+  const totalPages = pages.length
+  for (let i = 0; i < totalPages; i++) {
+    const p = pages[i]
+    const { width: pw } = p.getSize()
+    const footerText = `Page ${i + 1} / ${totalPages}`
+    const fSize = 10
+    const tw = helvetica.widthOfTextAtSize(footerText, fSize)
+    p.drawText(footerText, { x: (pw - tw) / 2, y: 20, size: fSize, font: helvetica })
   }
 
   const pdfBytes = await pdfDoc.save()
