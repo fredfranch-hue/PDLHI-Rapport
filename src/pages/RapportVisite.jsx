@@ -22,6 +22,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { referentielDesordres } from '../data/referentielDesordres'
 import AppBarOfficielle from '../components/AppBarOfficielle'
 import logoRepublique from '../assets/logos/logo-republique.png'
 import logoPrefet from '../assets/logos/logo-prefet.png'
@@ -67,9 +68,11 @@ function RapportVisite() {
   }
 
   const handleFieldChange = (field) => (event) => {
+    const value = event.target.value
     setFormData((current) => ({
       ...current,
-      [field]: event.target.value,
+      [field]: value,
+      ...(field === 'categorie' ? { desordre: '' } : {}),
     }))
   }
 
@@ -318,14 +321,31 @@ function RapportVisite() {
               </Select>
             </FormControl>
 
-            <TextField
-              label="Désordre"
-              fullWidth
-              multiline
-              minRows={2}
-              value={formData.desordre}
-              onChange={handleFieldChange('desordre')}
-            />
+            <FormControl fullWidth>
+              <InputLabel id="desordre-label">Désordre</InputLabel>
+              <Select
+                labelId="desordre-label"
+                label="Désordre"
+                value={formData.desordre}
+                onChange={handleFieldChange('desordre')}
+              >
+                {(() => {
+                  const key = formData.categorie === 'Divers' ? 'Autre' : formData.categorie
+                  const options = referentielDesordres[key] || []
+                  return options.length
+                    ? options.map((opt) => (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ))
+                    : (
+                      <MenuItem value="">
+                        <em>Aucun</em>
+                      </MenuItem>
+                    )
+                })()}
+              </Select>
+            </FormControl>
 
             <TextField
               label="Commentaire"
