@@ -22,12 +22,14 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Snackbar,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
 import { referentielPDLHI } from '../data/referentielPDLHI'
 import AppBarOfficielle from '../components/AppBarOfficielle'
+import { acquirePhotoFile } from '../services/photoAcquisition'
 import logoRepublique from '../assets/logos/logo-republique.png'
 import logoPrefet from '../assets/logos/logo-prefet.png'
 import logoSignalLogement from '../assets/logos/logo-signal-logement.png'
@@ -41,6 +43,7 @@ function RapportVisite() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [pdfGeneratedFileName, setPdfGeneratedFileName] = useState(null)
+  const [photoSnackbar, setPhotoSnackbar] = useState({ open: false, message: '' })
   const categorieOptions = Object.keys(referentielPDLHI)
 
   const [formData, setFormData] = useState({
@@ -104,26 +107,26 @@ function RapportVisite() {
     setDesordres((current) => current.filter((desordre) => desordre.id !== id))
   }
 
-  const handleOpenFileDialog = (desordreId) => {
-    const input = document.getElementById(`file-input-${desordreId}`)
-    if (input) input.click()
-  }
-
-  const handleFileChange = (desordreId) => (event) => {
-    const files = Array.from(event.target.files || [])
+  const handleAddPhoto = async (desordreId) => {
+    const files = await acquirePhotoFile({ desordreId })
     if (!files.length) return
 
     setDesordres((current) =>
       current.map((d) => {
         if (d.id !== desordreId) return d
         const remaining = 3 - (d.photos ? d.photos.length : 0)
-        const toAdd = files.slice(0, remaining)
+        const toAdd = files.slice(0, Math.max(remaining, 0))
+        if (!toAdd.length) return d
+
+        const total = (d.photos || []).length + toAdd.length
+        setPhotoSnackbar({
+          open: true,
+          message: `📷 Photo ajoutée (${Math.min(total, 3)}/3)`,
+        })
+
         return { ...d, photos: [...(d.photos || []), ...toAdd] }
       })
     )
-
-    // reset input so selecting same file again works
-    event.target.value = ''
   }
 
   const handleDeletePhoto = (desordreId, index) => {
@@ -345,33 +348,16 @@ function RapportVisite() {
                         ))}
 
                         {(desordre.photos || []).length < 3 ? (
-                          <>
-                            <input
-                              id={`file-input-${desordre.id}`}
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              onChange={handleFileChange(desordre.id)}
-                              multiple
-                            />
-                            <Button
-                              variant="outlined"
-                              onClick={() => handleOpenFileDialog(desordre.id)}
-                              sx={{ minWidth: 160, height: 40 }}
-                            >
-                              Ajouter une photo
-                            </Button>
-                          </>
-                        ) : (
                           <Button
                             variant="outlined"
-                            disabled
-                            aria-disabled
-                            sx={{ minWidth: 200, height: 40, bgcolor: 'grey.100' }}
+                            onClick={() => handleAddPhoto(desordre.id)}
+                            sx={{ minWidth: 180, height: 40 }}
                           >
-                            📷 3 photos — limite atteinte
+                            {(desordre.photos || []).length === 0
+                              ? '📷 Prendre une photo'
+                              : '📷 Prendre une autre photo'}
                           </Button>
-                        )}
+                        ) : null}
                       </Stack>
                     </Box>
                 </CardContent>
@@ -405,6 +391,14 @@ function RapportVisite() {
           </Card>
         )}
       </Box>
+
+      <Snackbar
+        open={photoSnackbar.open}
+        autoHideDuration={1200}
+        onClose={() => setPhotoSnackbar((current) => ({ ...current, open: false }))}
+        message={photoSnackbar.message}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
 
       <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
         <DialogTitle>Ajouter un désordre</DialogTitle>
