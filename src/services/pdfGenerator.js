@@ -377,6 +377,9 @@ export async function generatePdf(report = {}, desordres = []) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+
+  // Retourner un objet indiquant le succès
+  return { success: true, filename }
 }
 
 export default generatePdf

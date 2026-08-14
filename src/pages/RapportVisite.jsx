@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import SaveIcon from '@mui/icons-material/Save'
 import { generatePdf } from '../services/pdfGenerator'
 import { exportReport } from '../services/reportArchive'
+import { closeActiveReport } from '../services/reportSession'
 import {
   Box,
   Button,
@@ -32,11 +33,14 @@ import logoPrefet from '../assets/logos/logo-prefet.png'
 import logoSignalLogement from '../assets/logos/logo-signal-logement.png'
 
 function RapportVisite() {
+  const navigate = useNavigate()
   const { state } = useLocation()
   const report = state?.report ?? state ?? {}
   const importedDesordres = state?.desordres ?? []
   const [desordres, setDesordres] = useState(importedDesordres)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false)
+  const [pdfGeneratedFileName, setPdfGeneratedFileName] = useState(null)
   const categorieOptions = Object.keys(referentielPDLHI)
 
   const [formData, setFormData] = useState({
@@ -139,6 +143,30 @@ function RapportVisite() {
       // eslint-disable-next-line no-console
       console.error('Erreur lors de l\'enregistrement du rapport :', err)
     }
+  }
+
+  const handleGeneratePdf = async () => {
+    try {
+      const result = await generatePdf(report, desordres)
+      if (result?.success) {
+        setPdfGeneratedFileName(result.filename)
+        setCloseDialogOpen(true)
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Erreur lors de la génération du PDF :', err)
+    }
+  }
+
+  const handleCloseDialogContinue = () => {
+    setCloseDialogOpen(false)
+    setPdfGeneratedFileName(null)
+  }
+
+  const handleCloseDialogConfirm = () => {
+    setCloseDialogOpen(false)
+    closeActiveReport()
+    navigate('/', { replace: true })
   }
 
   return (
@@ -470,11 +498,39 @@ function RapportVisite() {
           startIcon={<PictureAsPdfIcon />}
           fullWidth
           disabled={desordres.length === 0}
-          onClick={() => generatePdf(report, desordres)}
+          onClick={handleGeneratePdf}
         >
           Générer le PDF
         </Button>
       </Box>
+
+      {/* Boîte de dialogue de clôture du rapport */}
+      <Dialog open={closeDialogOpen} onClose={handleCloseDialogContinue}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Rapport terminé</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography>
+            Le rapport PDF a été généré avec succès.
+          </Typography>
+          <Typography sx={{ mt: 1.5 }}>
+            Le rapport de visite est-il maintenant terminé ?
+          </Typography>
+          <Typography sx={{ mt: 1.5, color: 'text.secondary', fontSize: '0.9em' }}>
+            Vous pourrez toujours le rouvrir ultérieurement à partir de votre fichier .pdlhi.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseDialogContinue}>
+            Continuer les modifications
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCloseDialogConfirm}
+            autoFocus
+          >
+            ✔ Oui, clôturer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

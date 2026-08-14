@@ -1,12 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import { Box, Button, Typography, Alert } from '@mui/material'
 import { importReport } from '../services/reportArchive'
+import { resetSession } from '../services/reportSession'
 
 function Accueil() {
   const navigate = useNavigate()
   const [errorMessage, setErrorMessage] = useState(null)
+
+  // Réinitialiser la session lorsque la page d'accueil est chargée
+  useEffect(() => {
+    resetSession()
+  }, [])
 
   const handleOpenReport = async (event) => {
     const file = event.target.files?.[0]
