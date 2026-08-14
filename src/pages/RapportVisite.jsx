@@ -3,7 +3,9 @@ import { useLocation } from 'react-router-dom'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import SaveIcon from '@mui/icons-material/Save'
 import { generatePdf } from '../services/pdfGenerator'
+import { exportReport } from '../services/reportArchive'
 import {
   Box,
   Button,
@@ -127,6 +129,15 @@ function RapportVisite() {
         return { ...d, photos }
       })
     )
+  }
+
+  const handleSaveReport = async () => {
+    try {
+      await exportReport(report, desordres)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Erreur lors de l\'enregistrement du rapport :', err)
+    }
   }
 
   return (
@@ -441,7 +452,17 @@ function RapportVisite() {
         </DialogActions>
       </Dialog>
 
-        <Box sx={{ p: { xs: 2, sm: 3 }, pt: 0 }}>
+        <Box sx={{ p: { xs: 2, sm: 3 }, pt: 0, display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+        <Button
+          variant="contained"
+          size="large"
+          startIcon={<SaveIcon />}
+          fullWidth
+          disabled={desordres.length === 0}
+          onClick={handleSaveReport}
+        >
+          Enregistrer le rapport
+        </Button>
         <Button
           variant="contained"
           size="large"
