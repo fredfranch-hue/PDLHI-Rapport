@@ -120,12 +120,150 @@ export async function exportReport(report = {}, desordres = []) {
 }
 
 /**
- * Fonction stub pour l'import de rapport (US-014)
- * À implémenter ultérieurement
+ * Valide la structure et le contenu d'un rapport JSON
+ * @param {Object} data - Données du rapport à valider
+ * @throws {Error} Si la validation échoue
+ */
+function validateReportData(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Le fichier ne contient pas de données valides.')
+  }
+
+  if (!data.formatVersion) {
+    throw new Error('Le fichier ne contient pas de champ formatVersion.')
+  }
+
+  if (!data.report || typeof data.report !== 'object') {
+    throw new Error('Le fichier ne contient pas de section report valide.')
+  }
+
+  // Vérifier la compatibilité des versions
+  const version = data.formatVersion
+  if (!version.match(/^\d+\.\d+$/)) {
+    throw new Error(`Version de format invalide : ${version}`)
+  }
+
+  const [major] = version.split('.').map(Number)
+  if (major > 1) {
+    throw new Error(`Version de format non supportée : ${version}. Merci de mettre à jour l'application.`)
+  }
+}
+
+/**
+ * Reconvertit les données du rapport JSON en objets manipulables
+ * Convertit les noms de photos en objets File
+ * @param {Object} reportData - Données du rapport depuis report.json
+ * @param {Map} photoFiles - Map des noms de fichiers photos vers les Blob
+ * @returns {Object} Objet { report, desordres }
+ */
+async function reconstructReportData(reportData, photoFiles) {
+  const { report, desordres } = reportData
+
+  // Reconstruire les infos générales
+  const reconstructedReport = {
+    date: report.date || '',
+    commune: report.commune || '',
+    adresse: report.adresse || '',
+    bailleur: report.bailleur || '',
+    occupant: report.occupant || '',
+    operateur: report.operateur || '',
+    refSignalLogement: report.referenceSignalLogement || '',
+    refAxel: report.referenceAXEL || '',
+  }
+
+  // Reconstruire les désordres avec les photos
+  const reconstructedDesordres = (desordres || []).map((d) => {
+    // Charger les photos associées au désordre
+    const photos = (d.photos || []).map((photoName) => {
+      const blob = photoFiles.get(photoName)
+      if (!blob) {
+        // eslint-disable-next-line no-console
+        console.warn(`Photo manquante : ${photoName}`)
+        return null
+      }
+      // Convertir Blob en File
+      return new File([blob], photoName, { type: blob.type })
+    }).filter(Boolean)
+
+    return {
+      id: d.id || Date.now(),
+      piece: d.piece || '',
+      categorie: d.categorie || '',
+      desordre: d.desordre || '',
+      commentaire: d.commentaire || '',
+      photos,
+    }
+  })
+
+  return { report: reconstructedReport, desordres: reconstructedDesordres }
+}
+
+/**
+ * Importe un rapport depuis un fichier .pdlhi (archive ZIP)
  * @param {File} file - Fichier .pdlhi à importer
- * @returns {Promise<Object>} Données du rapport importées
+ * @returns {Promise<Object>} Objet { report, desordres }
+ * @throws {Error} Si le fichier est invalide ou corrompu
  */
 export async function importReport(file) {
-  // À implémenter
-  throw new Error('importReport() n\'est pas encore implémenté')
+  try {
+    // 1. Vérifier l'extension du fichier
+    if (!file.name.toLowerCase().endsWith('.pdlhi')) {
+      throw new Error('Le fichier sélectionné n\'est pas un rapport PDLHI valide.')
+    }
+
+    // 2. Ouvrir l'archive ZIP
+    let zip
+    try {
+      zip = await JSZip.loadAsync(file)
+    } catch (err) {
+      throw new Error('Le fichier est corrompu ou n\'est pas un archive ZIP valide.')
+    }
+
+    // 3. Vérifier la présence de report.json
+    const reportJsonFile = zip.file('report.json')
+    if (!reportJsonFile) {
+      throw new Error('Le fichier PDLHI ne contient pas de report.json.')
+    }
+
+    // 4. Lire et parser report.json
+    let reportData
+    try {
+      const jsonText = await reportJsonFile.async('text')
+      reportData = JSON.parse(jsonText)
+    } catch (err) {
+      throw new Error('Le fichier report.json est corrompu ou invalide.')
+    }
+
+    // 5. Valider la structure du rapport
+    validateReportData(reportData)
+
+    // 6. Charger les photos
+    const photosFolder = zip.folder('photos')
+    const photoFiles = new Map()
+
+    if (photosFolder) {
+      const fileList = photosFolder.file(/.*/)
+      for (const file of fileList) {
+        try {
+          const blob = await file.async('blob')
+          photoFiles.set(file.name, blob)
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn(`Erreur lors du chargement de la photo ${file.name}:`, err)
+        }
+      }
+    }
+
+    // 7. Reconstruire les données
+    const reconstructed = await reconstructReportData(reportData.report, photoFiles)
+
+    // eslint-disable-next-line no-console
+    console.log('Rapport importé avec succès :', reconstructed)
+
+    return reconstructed
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Erreur lors de l\'import du rapport :', err)
+    throw err
+  }
 }

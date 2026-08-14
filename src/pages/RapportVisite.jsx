@@ -33,8 +33,9 @@ import logoSignalLogement from '../assets/logos/logo-signal-logement.png'
 
 function RapportVisite() {
   const { state } = useLocation()
-  const report = state ?? {}
-  const [desordres, setDesordres] = useState([])
+  const report = state?.report ?? state ?? {}
+  const importedDesordres = state?.desordres ?? []
+  const [desordres, setDesordres] = useState(importedDesordres)
   const [dialogOpen, setDialogOpen] = useState(false)
   const categorieOptions = Object.keys(referentielPDLHI)
 
