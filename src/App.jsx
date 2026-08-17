@@ -26,7 +26,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
+      <BrowserRouter basename="/PDLHI-Rapport">
         <AppRouter onAboutClick={() => setAboutOpen(true)} />
         <About open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {updateAvailable && (
