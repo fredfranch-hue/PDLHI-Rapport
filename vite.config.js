@@ -18,7 +18,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/PDLHI-Rapport/',
-        scope: '/',
+        scope: '/PDLHI-Rapport/',
         lang: 'fr',
         categories: ['productivity'],
         screenshots: [
