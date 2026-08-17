@@ -3,12 +3,12 @@ import Accueil from '../pages/Accueil'
 import NouveauRapport from '../pages/NouveauRapport'
 import RapportVisite from '../pages/RapportVisite'
 
-function AppRouter() {
+function AppRouter({ onAboutClick }) {
   return (
     <Routes>
-      <Route path="/" element={<Accueil />} />
-      <Route path="/nouveau-rapport" element={<NouveauRapport />} />
-      <Route path="/rapport-visite" element={<RapportVisite />} />
+      <Route path="/" element={<Accueil onAboutClick={onAboutClick} />} />
+      <Route path="/nouveau-rapport" element={<NouveauRapport onAboutClick={onAboutClick} />} />
+      <Route path="/rapport-visite" element={<RapportVisite onAboutClick={onAboutClick} />} />
     </Routes>
   )
 }

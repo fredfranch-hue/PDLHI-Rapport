@@ -34,7 +34,7 @@ import logoRepublique from '../assets/logos/logo-republique.png'
 import logoPrefet from '../assets/logos/logo-prefet.png'
 import logoSignalLogement from '../assets/logos/logo-signal-logement.png'
 
-function RapportVisite() {
+function RapportVisite({ onAboutClick }) {
   const navigate = useNavigate()
   const { state } = useLocation()
   const report = state?.report ?? state ?? {}
@@ -174,7 +174,7 @@ function RapportVisite() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <AppBarOfficielle title="Rapport de visite" />
+      <AppBarOfficielle title="Rapport de visite" onAboutClick={onAboutClick} />
 
       <Box component="main" sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
         <Box

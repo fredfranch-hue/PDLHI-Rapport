@@ -12,7 +12,7 @@ function getTodayDate() {
   return new Date().toISOString().split('T')[0]
 }
 
-function NouveauRapport() {
+function NouveauRapport({ onAboutClick }) {
   const navigate = useNavigate()
   const [rapport, setRapport] = useState({
     date: getTodayDate(),
